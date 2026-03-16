@@ -175,8 +175,6 @@ const ListingsPage: React.FC<ListingsPageProps> = ({ searchParams, onBack }) => 
                     <option value="2010">2010+</option>
                 </select>
             </div>
-            
-            </div>
 
             <button
                 onClick={() => setFilters({ make: '', minYear: '', maxPrice: '' })}

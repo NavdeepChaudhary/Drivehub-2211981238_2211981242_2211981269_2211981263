@@ -120,7 +120,7 @@ const setStoredData = (key: string, data: any) => {
 
 // --- Custom Hooks ---
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const useListingsState = () => {
     const [listings, setListings] = useState<CarListing[]>([]);
@@ -1230,7 +1230,7 @@ const InboxView: React.FC<{ threads: ChatThread[]; currentUser: AppUser; onViewT
             <h2 style={{fontSize: '36px', fontWeight: '900', textAlign: 'center', color: '#818cf8', marginBottom: '32px'}}>My Inbox</h2>
             <div style={{backgroundColor: '#1f2937', borderRadius: '12px', border: '1px solid #4338ca50', overflow: 'hidden'}}>
                 {threads.length === 0 ? <p style={{textAlign: 'center', color: '#9ca3af', padding: '48px'}}>No messages yet.</p> : (
-                    <ul style={{listStyle: 'none', margin: 0, padding: 0, divideY: '1px solid #374151'}}>
+                    <ul style={{listStyle: 'none', margin: 0, padding: 0}}>
                         {threads.map(thread => (
                             <li key={thread.id} onClick={() => onViewThread(thread.id)} style={{padding: '20px', cursor: 'pointer', borderBottom: '1px solid #374151'}} className="inbox-item">
                                 <div style={{display: 'flex', justifyContent: 'space-between'}}>

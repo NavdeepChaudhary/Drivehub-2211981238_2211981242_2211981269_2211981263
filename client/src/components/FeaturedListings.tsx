@@ -17,9 +17,12 @@ const FeaturedListings: React.FC<FeaturedListingsProps> = () => {
       year: 2022,
       mileage: 15000,
       price: 38500,
-      condition: 'Excellent',
       description: 'Well-maintained electric sedan with autopilot. Low mileage.',
-      imageUrl: 'https://images.unsplash.com/photo-1593259066378-f75661414434?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' // Placeholder for Tesla
+      imageUrls: ['https://images.unsplash.com/photo-1593259066378-f75661414434?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'], // Placeholder for Tesla
+      isFeatured: true,
+      sellerUid: 'system',
+      verificationStatus: 'verified',
+      status: 'available',
     },
     {
       id: 'f2',
@@ -28,9 +31,12 @@ const FeaturedListings: React.FC<FeaturedListingsProps> = () => {
       year: 2019,
       mileage: 45000,
       price: 24000,
-      condition: 'Good',
       description: 'Reliable SUV, perfect for families. Recent service.',
-      imageUrl: 'https://images.unsplash.com/photo-1542362543-d02283925769?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' // Placeholder for RAV4
+      imageUrls: ['https://images.unsplash.com/photo-1542362543-d02283925769?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'], // Placeholder for RAV4
+      isFeatured: true,
+      sellerUid: 'system',
+      verificationStatus: 'verified',
+      status: 'available',
     },
     {
       id: 'f3',
@@ -39,9 +45,12 @@ const FeaturedListings: React.FC<FeaturedListingsProps> = () => {
       year: 2017,
       mileage: 22000,
       price: 85000,
-      condition: 'Excellent',
       description: 'Sports car enthusiast dream, pristine condition, low miles.',
-      imageUrl: 'https://images.unsplash.com/photo-1549399542-747690669279?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' // Placeholder for Porsche
+      imageUrls: ['https://images.unsplash.com/photo-1549399542-747690669279?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'], // Placeholder for Porsche
+      isFeatured: true,
+      sellerUid: 'system',
+      verificationStatus: 'verified',
+      status: 'available',
     },
   ];
 
@@ -52,13 +61,13 @@ const FeaturedListings: React.FC<FeaturedListingsProps> = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {featuredCars.map((car) => (
           <div key={car.id} className="bg-gray-800 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-700">
-            <img src={car.imageUrl} alt={`${car.make} ${car.model}`} className="w-full h-48 object-cover object-center" />
+            <img src={car.imageUrls?.[0] || 'https://placehold.co/600x400/1f2937/ffffff?text=Image+Unavailable'} alt={`${car.make} ${car.model}`} className="w-full h-48 object-cover object-center" />
             <div className="p-5">
               <h3 className="text-xl font-semibold text-white mb-2">{car.year} {car.make} {car.model}</h3>
               <p className="text-gray-300 text-sm mb-1">
                 <span className="font-medium text-red-400">${car.price.toLocaleString()}</span> &bull; {car.mileage.toLocaleString()} miles
               </p>
-              <p className="text-gray-400 text-sm mb-3">{car.condition}</p>
+              <p className="text-gray-400 text-sm mb-3">{car.description}</p>
               <button className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition duration-300 font-medium">
                 View Details
               </button>

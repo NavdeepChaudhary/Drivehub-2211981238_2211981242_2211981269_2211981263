@@ -44,7 +44,7 @@ const SellCarPage: React.FC<SellCarPageProps> = ({ currentUser, onBack }) => {
     const [submissionStatus, setSubmissionStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState('');
 
-    const API_URL = 'http://localhost:5000/api';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
