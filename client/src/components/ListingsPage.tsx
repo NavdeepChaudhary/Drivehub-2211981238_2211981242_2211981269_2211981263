@@ -44,7 +44,11 @@ const ListingsPage: React.FC<ListingsPageProps> = ({ searchParams, onBack }) => 
             const response = await fetch('/api/listings');
             if (response.ok) {
                 const data = await response.json();
-                setListings(data);
+                setListings(Array.isArray(data) ? data : []);
+            } else {
+                const text = await response.text().catch(() => '');
+                console.error('Failed to fetch listings:', response.status, text);
+                setListings([]);
             }
         } catch (error) {
             console.error('Error fetching listings:', error);
@@ -65,7 +69,7 @@ const ListingsPage: React.FC<ListingsPageProps> = ({ searchParams, onBack }) => 
 
     // --- FILTERING AND SORTING LOGIC (Memoized for Performance) ---
     const filteredAndSortedListings = useMemo(() => {
-        let list = [...listings];
+        let list = Array.isArray(listings) ? [...listings] : [];
         
         // 1. Filtering
         list = list.filter(car => {
@@ -117,7 +121,7 @@ const ListingsPage: React.FC<ListingsPageProps> = ({ searchParams, onBack }) => 
         setFilters(prev => ({ ...prev, [name]: value }));
     };
     
-    const allMakes = [...new Set(listings.map(c => c.make))];
+    const allMakes = [...new Set((Array.isArray(listings) ? listings : []).map(c => c.make))];
 
     // --- RENDER FUNCTIONS ---
     
