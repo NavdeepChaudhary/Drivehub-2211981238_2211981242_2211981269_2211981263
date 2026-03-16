@@ -19,6 +19,7 @@ interface CarListing {
     status: 'available' | 'sold';
     buyerUid?: string;
     purchaseDate?: string;
+    createdAt?: string;
 }
 
 interface AppUser {
@@ -122,11 +123,18 @@ const API_URL = 'http://localhost:5000/api';
 const useListingsState = () => {
     const [listings, setListings] = useState<CarListing[]>([]);
 
+    const fetchListings = async () => {
+        try {
+            const res = await fetch(`${API_URL}/listings`);
+            const data = await res.json();
+            setListings(data);
+        } catch (error) {
+            console.error('Error fetching listings', error);
+        }
+    };
+
     useEffect(() => {
-        fetch(`${API_URL}/listings`)
-            .then(res => res.json())
-            .then(data => setListings(data))
-            .catch(console.error);
+        fetchListings();
     }, []);
 
     const addOrUpdateListing = async (listing: Omit<CarListing, 'id' | 'sellerUid' | 'status' | 'verificationStatus'> & { id?: string }, userId: string) => {
@@ -147,7 +155,10 @@ const useListingsState = () => {
                     body: JSON.stringify(newListing)
                 });
                 const created = await res.json();
-                setListings(prev => [...prev, created]);
+                // Keep marketplace list strictly admin-approved only.
+                if (created.verificationStatus === 'verified' && created.status === 'available') {
+                    setListings(prev => [...prev, created]);
+                }
             }
         } catch (error) {
             console.error('Error saving listing', error);
@@ -177,7 +188,7 @@ const useListingsState = () => {
         }
     };
 
-    return { listings, addOrUpdateListing, deleteListing, purchaseListing };
+    return { listings, addOrUpdateListing, deleteListing, purchaseListing, fetchListings };
 };
 
 const useUserState = () => {
@@ -354,7 +365,7 @@ const Header: React.FC<{
         ...(!user?.isAdmin ? [
             { name: 'Listings', view: 'listings' as View, icon: <SearchSvg style={{width: '20px', height: '20px'}} /> },
             { name: 'Sell Your Car', view: 'sell' as View, icon: <DollarSignSvg style={{width: '20px', height: '20px'}} /> },
-            { name: 'Inbox', view: 'inbox' as View, icon: <InboxSvg style={{width: '20px', height: '20px'}} /> },
+            ...(user ? [{ name: 'Inbox', view: 'inbox' as View, icon: <InboxSvg style={{width: '20px', height: '20px'}} /> }] : []),
         ] : []),
     ];
 
@@ -403,10 +414,16 @@ const Header: React.FC<{
                                 </button>
                             </>
                         ) : (
-                            <button onClick={() => setView('auth')} style={getButtonStyle('auth')}>
-                                <UserSvg style={{width: '20px', height: '20px'}} />
-                                <span style={{marginLeft: '8px'}}>Login / Sign Up</span>
-                            </button>
+                            <>
+                                <button onClick={() => setView('auth')} style={getButtonStyle('auth')}>
+                                    <UserSvg style={{width: '20px', height: '20px'}} />
+                                    <span style={{marginLeft: '8px'}}>Login / Sign Up</span>
+                                </button>
+                                <button onClick={() => setView('admin-auth')} style={{...getButtonStyle('admin-auth'), border: '1px solid #f59e0b'}}>
+                                    <LockSvg style={{width: '20px', height: '20px'}} />
+                                    <span style={{marginLeft: '8px'}}>Admin Login</span>
+                                </button>
+                            </>
                         )}
                     </div>
                 </div>
@@ -706,10 +723,10 @@ const InvoiceView: React.FC<{
 /** Home View Component */
 const HomeView: React.FC<{ 
     setView: (v: View) => void; 
-    featuredListings: CarListing[]; 
+    recentListings: CarListing[]; 
     currentUserId: string | null;
     onViewDetail: (car: CarListing) => void; 
-}> = ({ setView, featuredListings, currentUserId, onViewDetail }) => {
+}> = ({ setView, recentListings, currentUserId, onViewDetail }) => {
     
     const [searchParams, setSearchParams] = useState({ make: '', year: '', priceRange: '' });
     const handleSearchChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
@@ -766,10 +783,10 @@ const HomeView: React.FC<{
                     </div>
                 </div>
 
-                <h3 style={{fontSize: '36px', fontWeight: 'bold', textAlign: 'center', color: '#818cf8', marginBottom: '24px'}}>Featured Vehicles</h3>
+                <h3 style={{fontSize: '36px', fontWeight: 'bold', textAlign: 'center', color: '#818cf8', marginBottom: '24px'}}>Recent Cars</h3>
                 
                 <div className="home-listings-grid">
-                    {featuredListings.length > 0 ? featuredListings.slice(0, 3).map(car => (
+                    {recentListings.length > 0 ? recentListings.map(car => (
                         <CarCard key={car.id} car={car} currentUserId={currentUserId} onViewDetail={onViewDetail} />
                     )) : <p style={{color: '#9ca3af', textAlign: 'center', width: '100%'}}>No listings yet.</p>}
                 </div>
@@ -1147,7 +1164,7 @@ const App = () => {
     const [itemToBuy, setItemToBuy] = useState<CarListing | null>(null);
     
     const { currentUser, signUp, logIn, adminLogIn, logOut, fetchUserEmail } = useUserState();
-    const { listings, addOrUpdateListing, deleteListing, purchaseListing } = useListingsState();
+    const { listings, addOrUpdateListing, deleteListing, purchaseListing, fetchListings } = useListingsState();
     const { fetchThreads, fetchMessages, findOrCreateChatThread, sendMessage, getMessages, getThreads, getThread } = useChatState();
 
     useEffect(() => {
@@ -1156,7 +1173,22 @@ const App = () => {
         }
     }, [currentUser]);
 
-    const featuredListings = useMemo(() => listings.filter(l => l.isFeatured && l.status !== 'sold').sort((a, b) => b.price - a.price), [listings]);
+    useEffect(() => {
+        if (view === 'home' || view === 'listings') {
+            fetchListings();
+        }
+    }, [view]);
+
+    const recentListings = useMemo(() => {
+        return [...listings]
+            .filter((l) => l.status !== 'sold')
+            .sort((a, b) => {
+                const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return bTime - aTime;
+            })
+            .slice(0, 5);
+    }, [listings]);
     
     const handleLogout = () => { logOut(); setView('home'); };
     const handleViewDetail = (car: CarListing) => { setSelectedCar(car); setView('detail'); window.scrollTo(0, 0); };
@@ -1208,7 +1240,7 @@ const App = () => {
         return (
             <>
                 <Header currentView={view} setView={setView} user={currentUser} onLogout={handleLogout} />
-                {view === 'home' && <HomeView setView={setView} featuredListings={featuredListings} currentUserId={currentUser?.uid || null} onViewDetail={handleViewDetail} />}
+                {view === 'home' && <HomeView setView={setView} recentListings={recentListings} currentUserId={currentUser?.uid || null} onViewDetail={handleViewDetail} />}
                 {view === 'user-dashboard' && currentUser && !currentUser.isAdmin && <UserDashboardView user={currentUser} setView={setView} onViewDetail={handleViewDetail} onLogout={handleLogout} />}
                 {view === 'listings' && <ListingsView listings={listings} currentUserId={currentUser?.uid || null} onViewDetail={handleViewDetail} />}
                 {view === 'sell' && <SellCarPage currentUser={currentUser} onBack={() => setView('home')} />}

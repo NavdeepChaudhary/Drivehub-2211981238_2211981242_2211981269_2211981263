@@ -63,10 +63,10 @@ const SellCarPage: React.FC<SellCarPageProps> = ({ currentUser, onBack }) => {
         }
     };
 
-    const uploadImages = async () => {
+    const uploadImages = async (): Promise<string[] | null> => {
         if (imageFiles.length === 0) {
             setErrorMessage('Please select at least one image');
-            return false;
+            return null;
         }
 
         const formData = new FormData();
@@ -87,10 +87,10 @@ const SellCarPage: React.FC<SellCarPageProps> = ({ currentUser, onBack }) => {
 
             const data = await response.json();
             setImageUrls(data.imageUrls);
-            return true;
+            return data.imageUrls;
         } catch (error: any) {
             setErrorMessage(error.message);
-            return false;
+            return null;
         }
     };
 
@@ -116,11 +116,19 @@ const SellCarPage: React.FC<SellCarPageProps> = ({ currentUser, onBack }) => {
         }
         // Validation for step 3
         else if (step === 3) {
-            if (!submissionData.price || !submissionData.vehicleNumber || !submissionData.ownerName || !submissionData.ownerContactNumber) {
+            if (!submissionData.price || !submissionData.vehicleNumber) {
                 setErrorMessage('Please fill in all required fields');
                 return;
             }
             setStep(4);
+        }
+        // Validation for step 4
+        else if (step === 4) {
+            if (!submissionData.ownerName || !submissionData.ownerContactNumber) {
+                setErrorMessage('Please fill in owner details');
+                return;
+            }
+            setStep(5);
         }
     };
 
@@ -134,8 +142,8 @@ const SellCarPage: React.FC<SellCarPageProps> = ({ currentUser, onBack }) => {
         }
 
         // Upload images
-        const imagesUploaded = await uploadImages();
-        if (!imagesUploaded) {
+        const uploadedUrls = await uploadImages();
+        if (!uploadedUrls) {
             return;
         }
 
@@ -145,7 +153,7 @@ const SellCarPage: React.FC<SellCarPageProps> = ({ currentUser, onBack }) => {
             const listingData = {
                 ...submissionData,
                 sellerUid: currentUser.uid,
-                imageUrls: imageUrls,
+                imageUrls: uploadedUrls,
             };
 
             const response = await fetch(`${API_URL}/listings`, {
@@ -181,48 +189,48 @@ const SellCarPage: React.FC<SellCarPageProps> = ({ currentUser, onBack }) => {
     // --- Form Step Renderers ---
 
     const renderStep1 = () => (
-        <div className="space-y-8 bg-gray-750 p-8 rounded-lg border border-gray-700/50">
-            <h2 className="text-3xl font-bold text-white mb-2">Step 1: Basic Vehicle Info</h2>
-            <p className="text-gray-400 text-sm">Tell us about your vehicle's make and model</p>
+        <section className="sell-step-card">
+            <h2 className="sell-step-title">Step 1: Basic Vehicle Info</h2>
+            <p className="sell-step-hint">Tell us about your vehicle make and model.</p>
             
             <div>
-                <label className="block text-sm font-semibold text-white mb-2">Make (Brand) *</label>
+                <label className="sell-label">Make (Brand) *</label>
                 <input 
                     type="text" 
                     name="make"
                     value={submissionData.make}
                     onChange={handleChange}
                     placeholder="e.g., Toyota, Mercedes, BMW"
-                    className="w-full px-4 py-3 bg-gray-700 border-2 border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/50 transition duration-200"
+                    className="sell-input"
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-semibold text-white mb-2">Model *</label>
+                <label className="sell-label">Model *</label>
                 <input 
                     type="text" 
                     name="model"
                     value={submissionData.model}
                     onChange={handleChange}
                     placeholder="e.g., Camry, S-Class, X5"
-                    className="w-full px-4 py-3 bg-gray-700 border-2 border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/50 transition duration-200"
+                    className="sell-input"
                 />
             </div>
 
-            <button onClick={handleNext} className="w-full py-4 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold rounded-lg transition duration-200 shadow-lg hover:shadow-red-600/50 transform hover:scale-105">
+            <button onClick={handleNext} className="sell-btn sell-btn-primary sell-btn-full" type="button">
                 Next: Vehicle Details →
             </button>
-        </div>
+        </section>
     );
 
     const renderStep2 = () => (
-        <div className="space-y-8 bg-gray-750 p-8 rounded-lg border border-gray-700/50">
-            <h2 className="text-3xl font-bold text-white mb-2">Step 2: Vehicle Details</h2>
-            <p className="text-gray-400 text-sm">Provide the year, mileage, and condition of your vehicle</p>
+        <section className="sell-step-card">
+            <h2 className="sell-step-title">Step 2: Vehicle Details</h2>
+            <p className="sell-step-hint">Provide the year, mileage, and condition.</p>
             
-            <div className="grid grid-cols-2 gap-6">
+            <div className="sell-grid-two">
                 <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Year *</label>
+                    <label className="sell-label">Year *</label>
                     <input 
                         type="number" 
                         name="year"
@@ -231,12 +239,12 @@ const SellCarPage: React.FC<SellCarPageProps> = ({ currentUser, onBack }) => {
                         min="1900"
                         max={new Date().getFullYear()}
                         placeholder="2023"
-                        className="w-full px-4 py-3 bg-gray-700 border-2 border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/50 transition duration-200"
+                        className="sell-input"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Mileage (KM) *</label>
+                    <label className="sell-label">Mileage (KM) *</label>
                     <input 
                         type="number" 
                         name="mileage"
@@ -244,18 +252,18 @@ const SellCarPage: React.FC<SellCarPageProps> = ({ currentUser, onBack }) => {
                         onChange={handleChange}
                         min="0"
                         placeholder="45000"
-                        className="w-full px-4 py-3 bg-gray-700 border-2 border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/50 transition duration-200"
+                        className="sell-input"
                     />
                 </div>
             </div>
 
             <div>
-                <label className="block text-sm font-semibold text-white mb-2">Condition *</label>
+                <label className="sell-label">Condition *</label>
                 <select
                     name="condition"
                     value={submissionData.condition}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 bg-gray-700 border-2 border-gray-600 rounded-lg text-white focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/50 transition duration-200 appearance-none cursor-pointer"
+                    className="sell-select"
                 >
                     <option value="Excellent">Excellent - Like New</option>
                     <option value="Good">Good - Well Maintained</option>
@@ -264,47 +272,47 @@ const SellCarPage: React.FC<SellCarPageProps> = ({ currentUser, onBack }) => {
                 </select>
             </div>
 
-            <div className="flex gap-4 pt-4">
-                <button onClick={handleBack} type="button" className="flex-1 py-4 px-6 bg-gray-600 hover:bg-gray-700 active:bg-gray-800 text-white font-bold rounded-lg transition duration-200 shadow-lg hover:shadow-gray-600/50 transform hover:scale-105">
+            <div className="sell-actions">
+                <button onClick={handleBack} type="button" className="sell-btn sell-btn-secondary">
                     ← Back
                 </button>
-                <button onClick={handleNext} className="flex-1 py-4 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold rounded-lg transition duration-200 shadow-lg hover:shadow-red-600/50 transform hover:scale-105">
+                <button onClick={handleNext} className="sell-btn sell-btn-primary" type="button">
                     Next: Registration →
                 </button>
             </div>
-        </div>
+        </section>
     );
 
     const renderStep3 = () => (
-        <div className="space-y-6">
-            <h2 className="text-2xl font-semibold text-white">3. Registration & Pricing</h2>
+        <section className="sell-step-card">
+            <h2 className="sell-step-title">Step 3: Registration & Pricing</h2>
             
             <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Vehicle Registration Number *</label>
+                <label className="sell-label">Vehicle Registration Number *</label>
                 <input 
                     type="text" 
                     name="vehicleNumber"
                     value={submissionData.vehicleNumber}
                     onChange={handleChange}
                     placeholder="ABC-1234"
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-red-500 focus:border-red-500 transition"
+                    className="sell-input"
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Chassis Number (Optional)</label>
+                <label className="sell-label">Chassis Number (Optional)</label>
                 <input 
                     type="text" 
                     name="chassisNumber"
                     value={submissionData.chassisNumber}
                     onChange={handleChange}
                     placeholder="Vehicle chassis number"
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-red-500 focus:border-red-500 transition"
+                    className="sell-input"
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Asking Price (₹) *</label>
+                <label className="sell-label">Asking Price (INR) *</label>
                 <input 
                     type="number" 
                     name="price"
@@ -312,51 +320,51 @@ const SellCarPage: React.FC<SellCarPageProps> = ({ currentUser, onBack }) => {
                     onChange={handleChange}
                     min="0"
                     placeholder="500000"
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-red-500 focus:border-red-500 transition"
+                    className="sell-input"
                 />
             </div>
 
-            <div className="flex space-x-4 pt-4">
-                <button onClick={handleBack} type="button" className="w-1/3 py-3 px-6 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg transition duration-200">
+            <div className="sell-actions">
+                <button onClick={handleBack} type="button" className="sell-btn sell-btn-secondary">
                     ← Back
                 </button>
-                <button onClick={handleNext} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition duration-200">
+                <button onClick={handleNext} className="sell-btn sell-btn-primary" type="button">
                     Next: Owner Details
                 </button>
             </div>
-        </div>
+        </section>
     );
 
     const renderStep4 = () => (
-        <div className="space-y-6">
-            <h2 className="text-2xl font-semibold text-white">4. Owner & Description</h2>
+        <section className="sell-step-card">
+            <h2 className="sell-step-title">Step 4: Owner & Description</h2>
             
             <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Owner Name *</label>
+                <label className="sell-label">Owner Name *</label>
                 <input 
                     type="text" 
                     name="ownerName"
                     value={submissionData.ownerName}
                     onChange={handleChange}
                     placeholder="Your full name"
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-red-500 focus:border-red-500 transition"
+                    className="sell-input"
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Contact Number *</label>
+                <label className="sell-label">Contact Number *</label>
                 <input 
                     type="tel" 
                     name="ownerContactNumber"
                     value={submissionData.ownerContactNumber}
                     onChange={handleChange}
                     placeholder="9876543210"
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-red-500 focus:border-red-500 transition"
+                    className="sell-input"
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Vehicle Description (Max 300 words)</label>
+                <label className="sell-label">Vehicle Description (Max 300 words)</label>
                 <textarea
                     name="description"
                     value={submissionData.description}
@@ -364,49 +372,49 @@ const SellCarPage: React.FC<SellCarPageProps> = ({ currentUser, onBack }) => {
                     rows={4}
                     maxLength={1500}
                     placeholder="Describe your vehicle condition, features, service history, and reasons for selling..."
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-red-500 focus:border-red-500 transition resize-none"
+                    className="sell-textarea"
                 />
             </div>
 
-            <div className="flex space-x-4 pt-4">
-                <button onClick={handleBack} type="button" className="w-1/3 py-3 px-6 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg transition duration-200">
+            <div className="sell-actions">
+                <button onClick={handleBack} type="button" className="sell-btn sell-btn-secondary">
                     ← Back
                 </button>
-                <button onClick={handleNext} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition duration-200">
+                <button onClick={handleNext} className="sell-btn sell-btn-primary" type="button">
                     Next: Upload Images
                 </button>
             </div>
-        </div>
+        </section>
     );
 
     const renderStep5 = () => (
-        <div className="space-y-6">
-            <h2 className="text-2xl font-semibold text-white">5. Upload Vehicle Images</h2>
+        <section className="sell-step-card">
+            <h2 className="sell-step-title">Step 5: Upload Vehicle Images</h2>
             
             <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
+                <label className="sell-label">
                     Select Images (Max 3)
                 </label>
-                <p className="text-xs text-gray-400 mb-3">Image 1: Exterior (Required), Image 2: Interior (Optional), Image 3: Other (Optional)</p>
+                <p className="sell-step-hint">Image 1: Exterior (required), Image 2: Interior, Image 3: Other.</p>
                 
                 <input 
                     type="file" 
                     multiple
                     accept="image/*"
                     onChange={handleImageChange}
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700"
+                    className="sell-file-input"
                 />
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="sell-file-count">
                     {imageFiles.length} file(s) selected
                 </p>
             </div>
 
             {imageFiles.length > 0 && (
-                <div className="grid grid-cols-3 gap-4">
+                <div className="sell-grid-three">
                     {imageFiles.map((file, index) => (
-                        <div key={index} className="p-3 bg-gray-700 rounded-lg">
-                            <p className="text-xs text-gray-300 truncate">{file.name}</p>
-                            <p className="text-xs text-gray-500">
+                        <div key={index} className="sell-file-pill">
+                            <p className="sell-file-name">{file.name}</p>
+                            <p className="sell-file-size">
                                 {(file.size / 1024 / 1024).toFixed(2)} MB
                             </p>
                         </div>
@@ -414,29 +422,29 @@ const SellCarPage: React.FC<SellCarPageProps> = ({ currentUser, onBack }) => {
                 </div>
             )}
 
-            <div className="flex space-x-4 pt-4">
-                <button onClick={handleBack} type="button" className="w-1/3 py-3 px-6 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg transition duration-200">
+            <div className="sell-actions">
+                <button onClick={handleBack} type="button" className="sell-btn sell-btn-secondary">
                     ← Back
                 </button>
                 <button 
                     type="submit" 
                     onClick={handleSubmit}
                     disabled={submissionStatus === 'submitting' || imageFiles.length === 0}
-                    className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="sell-btn sell-btn-success"
                 >
                     {submissionStatus === 'submitting' ? 'Submitting...' : 'SUBMIT FOR VERIFICATION'}
                 </button>
             </div>
-        </div>
+        </section>
     );
 
     const renderFormContent = () => {
         if (!currentUser || currentUser.email === null) {
             return (
-                <div className="text-center p-8 bg-gray-700 rounded-xl">
-                    <h2 className="text-2xl text-red-400 font-bold mb-4">Authentication Required</h2>
-                    <p className="text-gray-300 mb-6">Please log in or sign up to submit your car for sale.</p>
-                    <button onClick={onBack} className="py-2 px-6 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition">
+                <div className="sell-state-card sell-state-auth">
+                    <h2 className="sell-state-title">Authentication Required</h2>
+                    <p className="sell-state-text">Please log in or sign up to submit your car for sale.</p>
+                    <button onClick={onBack} className="sell-btn sell-btn-primary">
                         Go to Home
                     </button>
                 </div>
@@ -445,13 +453,13 @@ const SellCarPage: React.FC<SellCarPageProps> = ({ currentUser, onBack }) => {
 
         if (submissionStatus === 'success') {
             return (
-                <div className="text-center p-12 bg-gray-700 rounded-xl">
-                    <div className="text-6xl mb-4">✅</div>
-                    <h2 className="text-3xl text-green-400 font-bold mb-4">Submission Successful!</h2>
-                    <p className="text-gray-300 mb-3">
+                <div className="sell-state-card sell-state-success">
+                    <div className="sell-state-icon">SUCCESS</div>
+                    <h2 className="sell-state-title">Submission Successful</h2>
+                    <p className="sell-state-text">
                         Thank you for submitting your {submissionData.make} {submissionData.model}.
                     </p>
-                    <p className="text-gray-400 text-sm">
+                    <p className="sell-state-note">
                         Our admin team will verify your details and contact you via email ({currentUser.email}). Once approved, your listing will go live!
                     </p>
                 </div>
@@ -460,11 +468,11 @@ const SellCarPage: React.FC<SellCarPageProps> = ({ currentUser, onBack }) => {
 
         if (submissionStatus === 'error') {
             return (
-                <div className="text-center p-12 bg-red-900/50 rounded-xl">
-                    <div className="text-6xl mb-4">❌</div>
-                    <h2 className="text-3xl text-red-400 font-bold mb-4">Submission Failed</h2>
-                    <p className="text-red-300 mb-6">{errorMessage || 'There was an issue processing your request.'}</p>
-                    <button onClick={() => { setSubmissionStatus('idle'); setErrorMessage(''); }} className="py-2 px-6 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition">
+                <div className="sell-state-card sell-state-error">
+                    <div className="sell-state-icon">ERROR</div>
+                    <h2 className="sell-state-title">Submission Failed</h2>
+                    <p className="sell-state-text">{errorMessage || 'There was an issue processing your request.'}</p>
+                    <button onClick={() => { setSubmissionStatus('idle'); setErrorMessage(''); }} className="sell-btn sell-btn-primary">
                         Try Again
                     </button>
                 </div>
@@ -472,15 +480,15 @@ const SellCarPage: React.FC<SellCarPageProps> = ({ currentUser, onBack }) => {
         }
 
         return (
-            <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="flex justify-center mb-6 space-x-2">
+            <form onSubmit={handleSubmit} className="sell-form">
+                <div className="sell-progress">
                     {[1, 2, 3, 4, 5].map(s => (
-                        <div key={s} className={`flex-1 h-2 rounded-full transition-all duration-300 ${s <= step ? 'bg-red-600' : 'bg-gray-700'}`}></div>
+                        <div key={s} className={`sell-progress-segment ${s <= step ? 'is-active' : ''}`}></div>
                     ))}
                 </div>
 
                 {errorMessage && (
-                    <div className="p-3 bg-red-900/50 border border-red-500 rounded-lg text-red-300 text-sm">
+                    <div className="sell-alert">
                         {errorMessage}
                     </div>
                 )}
@@ -495,19 +503,19 @@ const SellCarPage: React.FC<SellCarPageProps> = ({ currentUser, onBack }) => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-900 flex flex-col items-center p-4 pt-20">
-            <div className="bg-gray-800 p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-2xl border border-red-600/50 mt-10">
+        <div className="sell-page-shell">
+            <div className="sell-page-card">
                 
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-4xl font-bold text-white">Sell Your Car</h1>
+                <div className="sell-page-header">
+                    <h1 className="sell-page-title">Sell Your Car</h1>
                     <button 
                         onClick={onBack} 
-                        className="text-red-400 hover:text-red-500 transition font-medium"
+                        className="sell-page-back"
                     >
                         ← Back to Home
                     </button>
                 </div>
-                <p className="text-gray-400 mb-8">Fill in your vehicle details. Once submitted, our team will verify and list it on the marketplace.</p>
+                <p className="sell-page-subtitle">Fill in your vehicle details. Once submitted, our team will verify and list it on the marketplace.</p>
 
                 {renderFormContent()}
             </div>

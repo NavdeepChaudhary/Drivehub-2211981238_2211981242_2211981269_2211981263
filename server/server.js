@@ -38,6 +38,13 @@ const upload = multer({ storage });
 app.use(cors());
 app.use(express.json());
 
+const sanitizeUser = (userDoc) => {
+  const user = userDoc.toObject ? userDoc.toObject() : userDoc;
+  delete user.password;
+  delete user.__v;
+  return user;
+};
+
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
@@ -50,7 +57,17 @@ mongoose.connect(process.env.MONGO_URI)
 // --- User Routes ---
 app.post("/api/users/signup", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = req.body?.email?.trim().toLowerCase();
+    const password = req.body?.password;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required." });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters." });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser)
       return res.status(400).json({ error: "Email already in use." });
@@ -58,7 +75,7 @@ app.post("/api/users/signup", async (req, res) => {
     const uid = `mongo-user-${email.split("@")[0]}-${Date.now()}`;
     const newUser = new User({ uid, email, password });
     await newUser.save();
-    res.status(201).json(newUser);
+    res.status(201).json(sanitizeUser(newUser));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -66,13 +83,19 @@ app.post("/api/users/signup", async (req, res) => {
 
 app.post("/api/users/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = req.body?.email?.trim().toLowerCase();
+    const password = req.body?.password;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required." });
+    }
+
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ error: "User not found." });
     if (user.password !== password)
       return res.status(401).json({ error: "Incorrect password." });
 
-    res.json(user);
+    res.json(sanitizeUser(user));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -88,7 +111,7 @@ app.get("/api/users/:uid", async (req, res) => {
       }
       return res.json({ email: "Unknown User" });
     }
-    res.json(user);
+    res.json(sanitizeUser(user));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -300,9 +323,33 @@ app.post("/api/admin/login", async (req, res) => {
 });
 
 // --- Admin Routes ---
+app.get("/api/admin/listings", async (req, res) => {
+  try {
+    const status = req.query.status;
+    const filter = {};
+
+    if (["pending", "verified", "rejected"].includes(status)) {
+      filter.verificationStatus = status;
+    }
+
+    const listings = await Listing.find(filter).sort({ createdAt: -1 });
+    const formattedListings = listings.map((l) => {
+      const lObj = l.toObject();
+      lObj.id = lObj._id.toString();
+      delete lObj._id;
+      delete lObj.__v;
+      return lObj;
+    });
+
+    res.json(formattedListings);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get("/api/admin/listings/pending", async (req, res) => {
   try {
-    const listings = await Listing.find({ verificationStatus: "pending" });
+    const listings = await Listing.find({ verificationStatus: "pending" }).sort({ createdAt: -1 });
     const formattedListings = listings.map((l) => {
       const lObj = l.toObject();
       lObj.id = lObj._id.toString();
@@ -316,6 +363,41 @@ app.get("/api/admin/listings/pending", async (req, res) => {
   }
 });
 
+app.get("/api/admin/users", async (req, res) => {
+  try {
+    const users = await User.find({}).sort({ createdAt: -1 });
+    const formattedUsers = users.map((u) => {
+      const user = sanitizeUser(u);
+      user.id = user._id.toString();
+      delete user._id;
+      return user;
+    });
+
+    res.json(formattedUsers);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/api/admin/users/:id", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Safety guard: do not allow deleting admin accounts through dashboard action.
+    if (user.isAdmin || user.email === process.env.ADMIN_EMAIL) {
+      return res.status(400).json({ error: "Admin user cannot be deleted" });
+    }
+
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: "User deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get admin dashboard stats
 app.get("/api/admin/stats", async (req, res) => {
   try {
@@ -323,13 +405,36 @@ app.get("/api/admin/stats", async (req, res) => {
     const verifiedCount = await Listing.countDocuments({ verificationStatus: "verified" });
     const rejectedCount = await Listing.countDocuments({ verificationStatus: "rejected" });
     const soldCount = await Listing.countDocuments({ status: "sold" });
+    const soldListings = await Listing.find({ status: "sold" }).select("price adminCommission");
+
+    const totalCommission = soldListings.reduce((sum, listing) => {
+      if (typeof listing.adminCommission === "number") {
+        return sum + listing.adminCommission;
+      }
+      // Backfill commission for legacy sold records missing adminCommission.
+      return sum + (listing.price * Number(process.env.ADMIN_COMMISSION_PERCENTAGE || 2)) / 100;
+    }, 0);
 
     res.json({
       pendingCount,
       verifiedCount,
       rejectedCount,
       soldCount,
+      totalCommission,
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/api/admin/listings/:id", async (req, res) => {
+  try {
+    const deletedListing = await Listing.findByIdAndDelete(req.params.id);
+    if (!deletedListing) {
+      return res.status(404).json({ error: "Listing not found" });
+    }
+
+    res.json({ message: "Listing deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
