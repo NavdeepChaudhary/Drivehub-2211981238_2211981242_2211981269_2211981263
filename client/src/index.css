@@ -1,15 +1,12 @@
-/* src/index.css or src/styles/global.css */
 
-/* 1. Reset margin and padding for all elements (optional but recommended) */
 * {
     margin: 0;
     padding: 0;
-    box-sizing: border-box; /* Helps with layout consistency */
+    box-sizing: border-box; 
 }
 
-/* 2. Force HTML and Body to take 100% of the viewport height */
 html, body, #root {
-    height: 100%; /* Makes them take the full height of the viewport */
+    height: 100%; 
     width: 100%;
-    /* Important: The React app is injected into the #root element (or whichever ID your framework uses) */
+   
 }

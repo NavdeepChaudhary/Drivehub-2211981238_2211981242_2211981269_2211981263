@@ -1,4 +1,3 @@
-// src/components/ListingsPage.tsx
 import React, { useState, useMemo, useEffect } from 'react';
 import type { SearchParams, CarListing } from '../types/car'; 
 
@@ -7,7 +6,6 @@ interface ListingsPageProps {
     onBack: () => void;
 }
 
-// Define custom filter state
 interface FilterState {
     make: string;
     minYear: string;
@@ -26,7 +24,6 @@ const ListingsPage: React.FC<ListingsPageProps> = ({ searchParams, onBack }) => 
     const [listings, setListings] = useState<CarListing[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Initial state set from the search bar on the home page
     const [filters, setFilters] = useState<FilterState>({
         make: searchParams.make || '',
         minYear: searchParams.year || '',
@@ -57,7 +54,6 @@ const ListingsPage: React.FC<ListingsPageProps> = ({ searchParams, onBack }) => 
         }
     };
 
-    // Update filters if searchParams change (e.g., if user searches again from another page)
     useEffect(() => {
         setFilters({
             make: searchParams.make || '',
@@ -67,24 +63,19 @@ const ListingsPage: React.FC<ListingsPageProps> = ({ searchParams, onBack }) => 
     }, [searchParams]);
 
 
-    // --- FILTERING AND SORTING LOGIC (Memoized for Performance) ---
     const filteredAndSortedListings = useMemo(() => {
         let list = Array.isArray(listings) ? [...listings] : [];
         
-        // 1. Filtering
         list = list.filter(car => {
-            // Filter by Make
             if (filters.make && car.make.toLowerCase() !== filters.make.toLowerCase()) {
                 return false;
             }
             
-            // Filter by Year (Min Year)
             const minYear = parseInt(filters.minYear);
             if (!isNaN(minYear) && car.year < minYear) {
                 return false;
             }
             
-            // Filter by Price (Max Price)
             const maxPrice = filters.maxPrice ? parseInt(filters.maxPrice.replace(/[^0-9]/g, '')) : 0;
             if (maxPrice > 0 && car.price > maxPrice) {
                 return false;
@@ -93,7 +84,6 @@ const ListingsPage: React.FC<ListingsPageProps> = ({ searchParams, onBack }) => 
             return true;
         });
 
-        // 2. Sorting
         list.sort((a, b) => {
             switch (sortOption) {
                 case 'price_asc':
@@ -112,9 +102,8 @@ const ListingsPage: React.FC<ListingsPageProps> = ({ searchParams, onBack }) => 
         });
 
         return list;
-    }, [listings, filters, sortOption]); // Recalculate only when filters or sort option changes
+    }, [listings, filters, sortOption]); 
 
-    // --- UI Helpers ---
 
     const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -123,13 +112,11 @@ const ListingsPage: React.FC<ListingsPageProps> = ({ searchParams, onBack }) => 
     
     const allMakes = [...new Set((Array.isArray(listings) ? listings : []).map(c => c.make))];
 
-    // --- RENDER FUNCTIONS ---
     
     const renderFilterSidebar = () => (
         <div className="p-6 bg-gray-800 rounded-xl sticky top-24 shadow-lg border border-gray-700 space-y-6">
             <h3 className="text-xl font-bold text-white mb-4 border-b border-red-600/50 pb-2">Filter Cars</h3>
             
-            {/* Make Filter */}
             <div className="space-y-2">
                 <label htmlFor="make" className="text-sm font-medium text-gray-300 block">Make</label>
                 <select
@@ -144,7 +131,6 @@ const ListingsPage: React.FC<ListingsPageProps> = ({ searchParams, onBack }) => 
                 </select>
             </div>
 
-            {/* Max Price Filter */}
             <div className="space-y-2">
                 <label htmlFor="maxPrice" className="text-sm font-medium text-gray-300 block">Max Price</label>
                 <select
@@ -162,7 +148,6 @@ const ListingsPage: React.FC<ListingsPageProps> = ({ searchParams, onBack }) => 
                 </select>
             </div>
 
-            {/* Min Year Filter */}
             <div className="space-y-2">
                 <label htmlFor="minYear" className="text-sm font-medium text-gray-300 block">Min Year</label>
                 <select
@@ -244,17 +229,13 @@ const ListingsPage: React.FC<ListingsPageProps> = ({ searchParams, onBack }) => 
                 </div>
 
                 <div className="flex flex-col lg:flex-row gap-8">
-                    {/* Left Sidebar for Filters (Hidden on small screens for simplicity) */}
                     <div className="lg:w-1/4 hidden lg:block">
                         {renderFilterSidebar()}
                     </div>
 
-                    {/* Main Content Area for Listings */}
                     <div className="lg:w-3/4">
-                        {/* Sort Dropdown & Mobile Filters */}
                         <div className="flex justify-between items-center mb-6 bg-gray-800 p-4 rounded-xl border border-gray-700/50">
                             
-                            {/* Sort Dropdown */}
                             <div className="flex items-center space-x-3">
                                 <label htmlFor="sort" className="text-sm font-medium text-gray-300 hidden sm:block">Sort By:</label>
                                 <select
@@ -269,13 +250,11 @@ const ListingsPage: React.FC<ListingsPageProps> = ({ searchParams, onBack }) => 
                                 </select>
                             </div>
 
-                            {/* Mobile Filter Button (Placeholder - full implementation is complex in single file) */}
                             <button className="lg:hidden px-4 py-2 bg-red-600 text-white rounded-lg font-medium text-sm hover:bg-red-700 transition">
                                 Filters (Toggle)
                             </button>
                         </div>
                         
-                        {/* Car Grid */}
                         {loading ? (
                             <div className="text-center p-10 bg-gray-800 rounded-xl text-white">
                                 <p className="text-xl font-semibold mb-2">Loading listings...</p>

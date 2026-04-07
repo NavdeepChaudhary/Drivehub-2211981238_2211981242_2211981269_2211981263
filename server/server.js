@@ -1,7 +1,11 @@
 import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
+import session from "express-session";
+import passport from "passport";
 import cloudinary from "cloudinary";
 import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
@@ -10,8 +14,7 @@ import Listing from "./models/Listing.js";
 import User from "./models/User.js";
 import Thread from "./models/Thread.js";
 import Message from "./models/Message.js";
-
-dotenv.config();
+import configurePassport from "./passport-config.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -35,8 +38,29 @@ const storage = new CloudinaryStorage({
 const upload = multer({ storage });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true,
+}));
 app.use(express.json());
+
+// Session middleware (required for Passport)
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "fallback-secret-key",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false, // set to true in production with HTTPS
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+  })
+);
+
+// Passport middleware
+configurePassport();
+app.use(passport.initialize());
+app.use(passport.session());
 
 const sanitizeUser = (userDoc) => {
   const user = userDoc.toObject ? userDoc.toObject() : userDoc;
@@ -594,6 +618,31 @@ app.get("/api/chat/messages/:threadId", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// --- Google OAuth Routes ---
+app.get(
+  "/api/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+app.get(
+  "/api/auth/google/callback",
+  passport.authenticate("google", { failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:5173"}?auth=failed` }),
+  (req, res) => {
+    // Successful authentication — redirect to frontend with user info
+    const user = req.user;
+    const userData = {
+      uid: user.uid,
+      email: user.email,
+      fullName: user.fullName,
+      mobileNumber: user.mobileNumber,
+    };
+    const encodedUser = encodeURIComponent(JSON.stringify(userData));
+    res.redirect(
+      `${process.env.FRONTEND_URL || "http://localhost:5173"}?google_auth=${encodedUser}`
+    );
+  }
+);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

@@ -50,10 +50,8 @@ interface ChatThread {
     lastTimestamp: number;
 }
 
-// UPDATED: View type
 type View = 'home' | 'user-dashboard' | 'listings' | 'auth' | 'sell' | 'detail' | 'inbox' | 'chat' | 'invoice' | 'admin' | 'admin-auth'; 
 
-// --- Constants & Mock Data ---
 
 const SYSTEM_SELLER_ID = 'system-user-driveluxe-888';
 const LOCAL_STORAGE_KEY_LISTINGS = 'driveluxe_local_listings_v2'; // Updated key to avoid conflicts with old data
@@ -99,7 +97,6 @@ const MOCK_LISTINGS: CarListing[] = [
     },
 ];
 
-// --- Helper Functions ---
 const generateId = () => (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `local-${Date.now()}`;
 const getStoredData = <T,>(key: string, fallback: T): T => {
     try {
@@ -118,7 +115,6 @@ const setStoredData = (key: string, data: any) => {
     }
 };
 
-// --- Custom Hooks ---
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -157,7 +153,6 @@ const useListingsState = () => {
                     body: JSON.stringify(newListing)
                 });
                 const created = await res.json();
-                // Keep marketplace list strictly admin-approved only.
                 if (created.verificationStatus === 'verified' && created.status === 'available') {
                     setListings(prev => [...prev, created]);
                 }
@@ -253,6 +248,15 @@ const useUserState = () => {
 
     const logOut = () => setCurrentUser(null);
 
+    const setGoogleUser = (userData: { uid: string; email: string; fullName?: string; mobileNumber?: string }) => {
+        setCurrentUser({
+            uid: userData.uid,
+            email: userData.email,
+            fullName: userData.fullName,
+            mobileNumber: userData.mobileNumber,
+        });
+    };
+
     const fetchUserEmail = async (uid: string): Promise<string> => {
         try {
             const res = await fetch(`${API_URL}/users/${uid}`);
@@ -263,7 +267,7 @@ const useUserState = () => {
         }
     };
 
-    return { currentUser, signUp, logIn, adminLogIn, logOut, fetchUserEmail };
+    return { currentUser, signUp, logIn, adminLogIn, logOut, fetchUserEmail, setGoogleUser };
 };
 
 const useChatState = () => {
@@ -358,9 +362,7 @@ const EyeOffSvg = (props: React.SVGProps<SVGSVGElement>) => ( <svg {...props} st
 const CheckCircleSvg = (props: React.SVGProps<SVGSVGElement>) => ( <svg {...props} style={{...defaultIconStyle, ...props.style}} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> );
 const DownloadSvg = (props: React.SVGProps<SVGSVGElement>) => ( <svg {...props} style={{...defaultIconStyle, ...props.style}} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> );
 
-// --- Components ---
 
-/** Header Navigation Component */
 const Header: React.FC<{ 
     currentView: View; 
     setView: (v: View) => void; 
@@ -640,12 +642,12 @@ const InvoiceView: React.FC<{
                 <div style={{display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #4f46e5', paddingBottom: '20px', marginBottom: '30px'}}>
                     <div>
                         <h1 style={{fontSize: '32px', color: '#4f46e5', margin: 0}}>INVOICE</h1>
-                        <p style={{color: '#666', margin: '5px 0 0'}}>Chaudhary_Cars Official Receipt</p>
+                        <p style={{color: '#666', margin: '5px 0 0'}}>Car-Drivehub Official Receipt</p>
                     </div>
                     <div style={{textAlign: 'right'}}>
-                        <h2 style={{margin: 0, fontSize: '20px'}}>Chaudhary_Cars Ltd.</h2>
-                        <p style={{margin: '5px 0', fontSize: '14px'}}>123 Cyber Avenue</p>
-                        <p style={{margin: 0, fontSize: '14px'}}>Silicon Valley, CA 94000</p>
+                        <h2 style={{margin: 0, fontSize: '20px'}}>Car-Drivehub Ltd.</h2>
+                        <p style={{margin: '5px 0', fontSize: '14px'}}>Chitkara University</p>
+                        <p style={{margin: 0, fontSize: '14px'}}>Rajpura , Punjab India</p>
                     </div>
                 </div>
 
@@ -716,7 +718,7 @@ const InvoiceView: React.FC<{
                 {/* Footer */}
                 <div style={{marginTop: '60px', textAlign: 'center', fontSize: '12px', color: '#9ca3af', borderTop: '1px solid #eee', paddingTop: '20px'}}>
                     <p>Thank you for your business!</p>
-                    <p>For any inquiries, please contact support@chaudharycars.com</p>
+                    <p>For any inquiries, please contact support@car-drivehub.com</p>
                 </div>
             </div>
 
@@ -732,22 +734,61 @@ const InvoiceView: React.FC<{
 };
 
 
-/** Home View Component */
 const HomeView: React.FC<{ 
     setView: (v: View) => void; 
     recentListings: CarListing[]; 
+    allListings: CarListing[];
     currentUserId: string | null;
     onViewDetail: (car: CarListing) => void; 
-}> = ({ setView, recentListings, currentUserId, onViewDetail }) => {
+}> = ({ setView, recentListings, allListings, currentUserId, onViewDetail }) => {
     
     const [searchParams, setSearchParams] = useState({ make: '', year: '', priceRange: '' });
+    const [isSearchActive, setIsSearchActive] = useState(false);
     const handleSearchChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
         setSearchParams({ ...searchParams, [e.target.name]: e.target.value });
     };
+
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        setView('listings');
+        // Activate in-place search if any filter is set
+        if (searchParams.make || searchParams.year || searchParams.priceRange) {
+            setIsSearchActive(true);
+        }
     };
+
+    const handleClearSearch = () => {
+        setSearchParams({ make: '', year: '', priceRange: '' });
+        setIsSearchActive(false);
+    };
+
+    // Filter listings based on search params
+    const searchResults = useMemo(() => {
+        if (!isSearchActive) return [];
+        const activeListings = allListings.filter(l => l.status !== 'sold');
+        return activeListings.filter(car => {
+            // Make filter
+            if (searchParams.make) {
+                const term = searchParams.make.toLowerCase();
+                if (!car.make.toLowerCase().includes(term) && !car.model.toLowerCase().includes(term)) {
+                    return false;
+                }
+            }
+            // Year filter
+            if (searchParams.year) {
+                if (searchParams.year === '2023+' && car.year < 2023) return false;
+                if (searchParams.year === '2020-2022' && (car.year < 2020 || car.year > 2022)) return false;
+                if (searchParams.year === 'Pre-2020' && car.year >= 2020) return false;
+            }
+            // Price filter
+            if (searchParams.priceRange) {
+                if (searchParams.priceRange === '<50000' && car.price >= 50000) return false;
+                if (searchParams.priceRange === '50000-100000' && (car.price < 50000 || car.price > 100000)) return false;
+                if (searchParams.priceRange === '>100000' && car.price <= 100000) return false;
+            }
+            return true;
+        });
+    }, [isSearchActive, allListings, searchParams]);
+
     const heroStyle: React.CSSProperties = {
         position: 'relative', overflow: 'hidden', borderRadius: '16px',
         boxShadow: '0 20px 25px rgba(0, 0, 0, 0.4)', padding: '48px', marginBottom: '48px',
@@ -782,9 +823,9 @@ const HomeView: React.FC<{
                                 </select>
                                 <select name="priceRange" value={searchParams.priceRange} onChange={handleSearchChange} className="input-field" >
                                     <option value="">Price Range</option>
-                                    <option value="<50000">Below $50k</option>
-                                    <option value="50000-100000">$50k - $100k</option>
-                                    <option value=">100000">Over $100k</option>
+                                    <option value="<50000">Below ₹50k</option>
+                                    <option value="50000-100000">₹50k - ₹1L</option>
+                                    <option value=">100000">Over ₹1L</option>
                                 </select>
                                 <button type="submit" className="btn-primary" style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                                     <SearchSvg style={{width: '20px', height: '20px', marginRight: '8px', color: '#fff'}} />
@@ -795,13 +836,39 @@ const HomeView: React.FC<{
                     </div>
                 </div>
 
-                <h3 style={{fontSize: '36px', fontWeight: 'bold', textAlign: 'center', color: '#818cf8', marginBottom: '24px'}}>Recent Cars</h3>
-                
-                <div className="home-listings-grid">
-                    {recentListings.length > 0 ? recentListings.map(car => (
-                        <CarCard key={car.id} car={car} currentUserId={currentUserId} onViewDetail={onViewDetail} />
-                    )) : <p style={{color: '#9ca3af', textAlign: 'center', width: '100%'}}>No listings yet.</p>}
-                </div>
+                {/* Search Results Section (shown when search is active) */}
+                {isSearchActive ? (
+                    <>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px'}}>
+                            <h3 style={{fontSize: '36px', fontWeight: 'bold', color: '#818cf8', margin: 0}}>
+                                Search Results <span style={{fontSize: '18px', color: '#9ca3af', fontWeight: '400'}}>({searchResults.length} found)</span>
+                            </h3>
+                            <button onClick={handleClearSearch} className="btn-cancel" style={{display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px'}}>
+                                ✕ Clear Search
+                            </button>
+                        </div>
+                        <div className="home-listings-grid">
+                            {searchResults.length > 0 ? searchResults.map(car => (
+                                <CarCard key={car.id} car={car} currentUserId={currentUserId} onViewDetail={onViewDetail} />
+                            )) : (
+                                <div style={{gridColumn: '1 / -1', textAlign: 'center', padding: '60px 20px'}}>
+                                    <div style={{fontSize: '60px', marginBottom: '16px'}}>🔍</div>
+                                    <p style={{color: '#9ca3af', fontSize: '18px', marginBottom: '8px'}}>No cars match your search criteria.</p>
+                                    <p style={{color: '#6b7280', fontSize: '14px'}}>Try adjusting your filters or clear the search.</p>
+                                </div>
+                            )}
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <h3 style={{fontSize: '36px', fontWeight: 'bold', textAlign: 'center', color: '#818cf8', marginBottom: '24px'}}>Recent Cars</h3>
+                        <div className="home-listings-grid">
+                            {recentListings.length > 0 ? recentListings.map(car => (
+                                <CarCard key={car.id} car={car} currentUserId={currentUserId} onViewDetail={onViewDetail} />
+                            )) : <p style={{color: '#9ca3af', textAlign: 'center', width: '100%'}}>No listings yet.</p>}
+                        </div>
+                    </>
+                )}
                 
                 <div style={{textAlign: 'center', marginTop: '48px', marginBottom: '32px'}}>
                     <button onClick={() => setView('listings')} className="btn-secondary" style={{padding: '12px 24px', fontSize: '18px'}}>
@@ -813,7 +880,6 @@ const HomeView: React.FC<{
     );
 };
 
-/** User Dashboard View Component */
 const UserDashboardView: React.FC<{ 
     user: AppUser;
     setView: (v: View) => void;
@@ -824,16 +890,13 @@ const UserDashboardView: React.FC<{
     return (
         <main style={{minHeight: '80vh', backgroundColor: '#111827', color: '#fff', paddingTop: '32px'}}>
             <div style={{maxWidth: '1280px', margin: '0 auto', padding: '0 16px'}}>
-                {/* Welcome Banner */}
                 <div style={{backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', padding: '40px', borderRadius: '16px', marginBottom: '48px', boxShadow: '0 20px 25px rgba(0, 0, 0, 0.4)'}}>
                     <h1 style={{fontSize: '40px', fontWeight: '900', color: '#fff', marginBottom: '8px'}}>Welcome, {(user.fullName && user.fullName.trim()) ? user.fullName.split(' ')[0] : user.email}</h1>
                     <p style={{fontSize: '18px', color: '#e9ecef', margin: 0}}>Your personal dashboard</p>
                 </div>
 
-                {/* Quick Actions Grid */}
                 <h2 style={{fontSize: '28px', fontWeight: 'bold', color: '#a5b4fc', marginBottom: '24px'}}>Quick Actions</h2>
                 <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px', marginBottom: '48px'}}>
-                    {/* Browse Listings */}
                     <div style={{backgroundColor: '#1f2937', padding: '32px', borderRadius: '12px', border: '1px solid #4338ca50', textAlign: 'center', cursor: 'pointer', transition: 'all 0.3s', transform: 'scale(1)'}} 
                         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.05)'; }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
@@ -842,8 +905,6 @@ const UserDashboardView: React.FC<{
                         <h3 style={{fontSize: '20px', fontWeight: 'bold', color: '#fff', marginBottom: '8px'}}>Browse Listings</h3>
                         <p style={{color: '#9ca3af', fontSize: '14px'}}>View all available cars</p>
                     </div>
-
-                    {/* Sell Your Car */}
                     <div style={{backgroundColor: '#1f2937', padding: '32px', borderRadius: '12px', border: '1px solid #4338ca50', textAlign: 'center', cursor: 'pointer', transition: 'all 0.3s', transform: 'scale(1)'}} 
                         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.05)'; }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
@@ -853,7 +914,6 @@ const UserDashboardView: React.FC<{
                         <p style={{color: '#9ca3af', fontSize: '14px'}}>List a new vehicle</p>
                     </div>
 
-                    {/* Messages */}
                     <div style={{backgroundColor: '#1f2937', padding: '32px', borderRadius: '12px', border: '1px solid #4338ca50', textAlign: 'center', cursor: 'pointer', transition: 'all 0.3s', transform: 'scale(1)'}} 
                         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.05)'; }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
@@ -864,7 +924,6 @@ const UserDashboardView: React.FC<{
                     </div>
                 </div>
 
-                {/* User Info */}
                 <div style={{backgroundColor: '#1f2937', padding: '32px', borderRadius: '12px', border: '1px solid #4338ca50'}}>
                     <h2 style={{fontSize: '24px', fontWeight: 'bold', color: '#a5b4fc', marginBottom: '24px'}}>Account Information</h2>
                     <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '24px'}}>
@@ -890,7 +949,6 @@ const UserDashboardView: React.FC<{
     );
 };
 
-/** Listings View Component */
 const ListingsView: React.FC<{ 
     listings: CarListing[]; 
     currentUserId: string | null; 
@@ -898,7 +956,6 @@ const ListingsView: React.FC<{
 }> = ({ listings, currentUserId, onViewDetail }) => {
     const [searchTerm, setSearchTerm] = useState('');
     
-    // Filter out sold cars from the public marketplace
     const activeListings = useMemo(() => listings.filter(l => l.status !== 'sold'), [listings]);
 
     const filteredListings = useMemo(() => {
@@ -953,8 +1010,7 @@ const ListingsView: React.FC<{
     );
 };
 
-/** Sell/Manage Listings View Component */
-/** Car Detail View Component */
+
 const CarDetailView: React.FC<{ 
     car: CarListing; 
     onBack: () => void;
@@ -1032,7 +1088,15 @@ const CarDetailView: React.FC<{
 };
 
 
-/** Auth View */
+const GoogleSvg = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style={{width: '20px', height: '20px', ...props.style}}>
+        <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+        <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+        <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+        <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+    </svg>
+);
+
 const AuthView: React.FC<{ 
     onLogin: () => void; 
     onSignUp: (fullName: string, email: string, pass: string, mobileNumber?: string) => Promise<{ success: boolean, error?: string }>;
@@ -1080,11 +1144,41 @@ const AuthView: React.FC<{
         if (!result.success) setError(result.error || 'Authentication failed.');
     };
 
+    const handleGoogleLogin = () => {
+        // Redirect to backend Google OAuth endpoint
+        window.location.href = `${API_URL.replace('/api', '')}/api/auth/google`;
+    };
+
     return (
         <main style={{minHeight: '80vh', backgroundColor: '#111827', color: '#fff', padding: '48px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
             <div style={{maxWidth: '448px', width: '100%', backgroundColor: '#1f2937', padding: '40px', borderRadius: '12px', boxShadow: '0 20px 25px rgba(0, 0, 0, 0.5)', border: '1px solid #9333ea50'}}>
                 <h2 style={{fontSize: '28px', fontWeight: 'bold', color: '#c084fc', marginBottom: '8px', textAlign: 'center'}}>{isLoginView ? 'Welcome Back' : 'Create Account'}</h2>
                 {error && <div style={{padding: '12px', borderRadius: '8px', backgroundColor: '#ef4444', color: '#fff', marginBottom: '16px', textAlign: 'center'}}>{error}</div>}
+                
+                {/* Google Sign-In Button */}
+                <button
+                    onClick={handleGoogleLogin}
+                    style={{
+                        width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #4b5563',
+                        backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '15px',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        gap: '12px', marginBottom: '20px', transition: 'all 0.2s',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f3f4f6'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fff'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)'; }}
+                >
+                    <GoogleSvg />
+                    <span>{isLoginView ? 'Sign in with Google' : 'Sign up with Google'}</span>
+                </button>
+
+                {/* Divider */}
+                <div style={{display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px'}}>
+                    <div style={{flex: 1, height: '1px', backgroundColor: '#4b5563'}}></div>
+                    <span style={{color: '#9ca3af', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px'}}>or</span>
+                    <div style={{flex: 1, height: '1px', backgroundColor: '#4b5563'}}></div>
+                </div>
+
                 <form onSubmit={handleSubmit} style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
                     {!isLoginView && (
                         <input type="text" placeholder="Full Name" value={fullName} onChange={(e) => setFullName(e.target.value)} required className="input-field" />
@@ -1164,7 +1258,6 @@ const AuthView: React.FC<{
     );
 };
 
-/** Admin Auth View */
 const AdminAuthView: React.FC<{
     onAdminLogin: (email: string, pass: string) => Promise<{ success: boolean, error?: string }>;
     setView: (v: View) => void;
@@ -1223,7 +1316,6 @@ const AdminAuthView: React.FC<{
     );
 };
 
-/** Inbox View */
 const InboxView: React.FC<{ threads: ChatThread[]; currentUser: AppUser; onViewThread: (id: string) => void; }> = ({ threads, currentUser, onViewThread }) => (
     <main style={{minHeight: '80vh', backgroundColor: '#111827', color: '#fff', padding: '48px 0'}}>
         <div style={{maxWidth: '1024px', margin: '0 auto', padding: '0 16px'}}>
@@ -1247,7 +1339,6 @@ const InboxView: React.FC<{ threads: ChatThread[]; currentUser: AppUser; onViewT
     </main>
 );
 
-/** Chat View */
 const ChatView: React.FC<{ thread: ChatThread | undefined; messages: ChatMessage[]; currentUser: AppUser; onSendMessage: (text: string) => void; onBack: () => void; }> = ({ thread, messages, currentUser, onSendMessage, onBack }) => {
     const [msg, setMsg] = useState('');
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -1279,7 +1370,6 @@ const ChatView: React.FC<{ thread: ChatThread | undefined; messages: ChatMessage
     );
 };
 
-/** Main Application Component */
 const App = () => {
     const [view, setView] = useState<View>('home');
     const [selectedCar, setSelectedCar] = useState<CarListing | null>(null);
@@ -1287,9 +1377,31 @@ const App = () => {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [itemToBuy, setItemToBuy] = useState<CarListing | null>(null);
     
-    const { currentUser, signUp, logIn, adminLogIn, logOut, fetchUserEmail } = useUserState();
+    const { currentUser, signUp, logIn, adminLogIn, logOut, fetchUserEmail, setGoogleUser } = useUserState();
     const { listings, addOrUpdateListing, deleteListing, purchaseListing, fetchListings } = useListingsState();
     const { fetchThreads, fetchMessages, findOrCreateChatThread, sendMessage, getMessages, getThreads, getThread } = useChatState();
+
+    // Handle Google OAuth callback
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const googleAuthData = urlParams.get('google_auth');
+        const authFailed = urlParams.get('auth');
+
+        if (googleAuthData) {
+            try {
+                const userData = JSON.parse(decodeURIComponent(googleAuthData));
+                setGoogleUser(userData);
+                setView('user-dashboard');
+            } catch (e) {
+                console.error('Failed to parse Google auth data', e);
+            }
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (authFailed === 'failed') {
+            console.error('Google authentication failed');
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, []);
 
     useEffect(() => {
         if (currentUser) {
@@ -1333,7 +1445,6 @@ const App = () => {
         setView('chat');
     };
     
-    // Buy Now Flow
     const handleBuyNow = (car: CarListing) => {
         if (!currentUser) { setView('auth'); return; }
         setItemToBuy(car);
@@ -1344,7 +1455,6 @@ const App = () => {
         if (itemToBuy && currentUser) {
             purchaseListing(itemToBuy.id, currentUser.uid);
             setShowPaymentModal(false);
-            // Show Invoice immediately after purchase
             setSelectedCar({...itemToBuy, status: 'sold', buyerUid: currentUser.uid, purchaseDate: new Date().toISOString()});
             setView('invoice');
             setItemToBuy(null);
@@ -1364,7 +1474,7 @@ const App = () => {
         return (
             <>
                 <Header currentView={view} setView={setView} user={currentUser} onLogout={handleLogout} />
-                {view === 'home' && <HomeView setView={setView} recentListings={recentListings} currentUserId={currentUser?.uid || null} onViewDetail={handleViewDetail} />}
+                {view === 'home' && <HomeView setView={setView} recentListings={recentListings} allListings={listings} currentUserId={currentUser?.uid || null} onViewDetail={handleViewDetail} />}
                 {view === 'user-dashboard' && currentUser && !currentUser.isAdmin && <UserDashboardView user={currentUser} setView={setView} onViewDetail={handleViewDetail} onLogout={handleLogout} />}
                 {view === 'listings' && <ListingsView listings={listings} currentUserId={currentUser?.uid || null} onViewDetail={handleViewDetail} />}
                 {view === 'sell' && <SellCarPage currentUser={currentUser} onBack={() => setView('home')} />}
