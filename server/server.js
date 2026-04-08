@@ -50,9 +50,11 @@ app.use(
     secret: process.env.SESSION_SECRET || "fallback-secret-key",
     resave: false,
     saveUninitialized: false,
+    proxy: process.env.NODE_ENV === "production", // Trust the reverse proxy
     cookie: {
-      secure: false, // set to true in production with HTTPS
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      secure: process.env.NODE_ENV === "production", // true in production
+      maxAge: 24 * 60 * 60 * 1000,
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
     },
   })
 );
