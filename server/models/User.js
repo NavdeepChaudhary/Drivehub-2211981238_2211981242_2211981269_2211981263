@@ -6,6 +6,10 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: false }, // Optional for Google OAuth users
     googleId: { type: String, default: undefined }, // Google OAuth ID
+    authProvider: { type: String, default: "local" },
+    isVerified: { type: Boolean, default: false },
+    profileImage: { type: String, default: "" },
+    cart: { type: Array, default: [] },
     mobileNumber: {
         type: String,
         default: undefined,
