@@ -653,6 +653,25 @@ app.get(
   }
 );
 
+// TEMPORARY DEBUG - remove after fixing env vars
+app.get("/api/debug/env-check", (req, res) => {
+  const vars = [
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "MONGO_URI",
+    "SESSION_SECRET",
+    "FRONTEND_URL",
+    "BACKEND_URL",
+    "CLOUDINARY_CLOUD_NAME",
+    "NODE_ENV",
+  ];
+  const status = {};
+  vars.forEach((v) => {
+    status[v] = process.env[v] ? `SET (${process.env[v].length} chars)` : "NOT SET";
+  });
+  res.json(status);
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
