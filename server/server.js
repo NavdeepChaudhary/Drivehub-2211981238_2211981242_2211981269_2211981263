@@ -620,13 +620,22 @@ app.get("/api/chat/messages/:threadId", async (req, res) => {
 });
 
 // --- Google OAuth Routes ---
+const oauthGuard = (req, res, next) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return res.status(503).json({ error: "Google OAuth is not configured on this server." });
+  }
+  next();
+};
+
 app.get(
   "/api/auth/google",
+  oauthGuard,
   passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
 app.get(
   "/api/auth/google/callback",
+  oauthGuard,
   passport.authenticate("google", { failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:5173"}?auth=failed` }),
   (req, res) => {
     // Successful authentication — redirect to frontend with user info
