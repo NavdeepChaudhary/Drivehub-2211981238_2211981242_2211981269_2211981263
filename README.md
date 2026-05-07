@@ -395,7 +395,7 @@ export default defineConfig([
         tsconfigRootDir: import.meta.dirname,
       },
       // other options...
-    },
-  },
 ])
 ```
+
+# DriveHub
